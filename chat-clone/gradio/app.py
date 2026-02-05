@@ -34,6 +34,15 @@ TOOLS = [
     ("file_analysis", "📄 File Analysis"),
 ]
 
+QUICK_ACTIONS = [
+    ("✍️ Write code", "Write a Python function that"),
+    ("💡 Explain", "Explain the concept of"),
+    ("📝 Summarize", "Summarize the following text:"),
+    ("🐛 Debug", "Help me debug this code:"),
+    ("🔄 Refactor", "Refactor this code to be cleaner:"),
+    ("📊 Analyze", "Analyze the following data:"),
+]
+
 
 # ---------------------------------------------------------------------------
 # Custom CSS -- dark Claude-like theme
@@ -322,6 +331,30 @@ footer {
 #options-accordion .label-wrap:hover {
     color: #d4a574 !important;
 }
+
+/* ── Quick actions ─────────────────────────────────────────────────────── */
+#quick-actions {
+    margin-top: 4px !important;
+    gap: 6px !important;
+}
+#quick-actions .block {
+    background: transparent !important;
+}
+.quick-action-btn {
+    background-color: #2d2d44 !important;
+    border: 1px solid #3d3d5c !important;
+    border-radius: 18px !important;
+    color: #b0b0c0 !important;
+    font-size: 0.8rem !important;
+    padding: 4px 14px !important;
+    cursor: pointer !important;
+    transition: border-color 0.2s, color 0.2s !important;
+    min-width: auto !important;
+}
+.quick-action-btn:hover {
+    border-color: #d4a574 !important;
+    color: #d4a574 !important;
+}
 """
 
 # ---------------------------------------------------------------------------
@@ -414,6 +447,12 @@ def create_app():
                             elem_id="tool-toggles",
                             scale=2,
                             interactive=True,
+                        )
+                with gr.Row(elem_id="quick-actions"):
+                    qa_buttons = []
+                    for label, _ in QUICK_ACTIONS:
+                        qa_buttons.append(
+                            gr.Button(label, size="sm", elem_classes=["quick-action-btn"])
                         )
 
         # -- Callbacks -------------------------------------------------------
@@ -572,6 +611,17 @@ def create_app():
             inputs=[convo_radio, conversations, active_idx],
             outputs=[chatbot, conversations, active_idx],
         )
+
+        # Quick action buttons — prefill the text input
+        def fill_prompt(prefill_text):
+            return prefill_text + " "
+
+        for i, btn in enumerate(qa_buttons):
+            btn.click(
+                fn=lambda _, text=QUICK_ACTIONS[i][1]: text + " ",
+                inputs=[],
+                outputs=[msg_input],
+            )
 
     return app
 

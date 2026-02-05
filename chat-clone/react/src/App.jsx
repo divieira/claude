@@ -29,6 +29,15 @@ const TOOLS = [
   { id: 'file_analysis', name: 'File Analysis', icon: '📄' },
 ];
 
+const QUICK_ACTIONS = [
+  { label: '✍️ Write code', prompt: 'Write a Python function that' },
+  { label: '💡 Explain concept', prompt: 'Explain the concept of' },
+  { label: '📝 Summarize', prompt: 'Summarize the following text:' },
+  { label: '🐛 Debug', prompt: 'Help me debug this code:' },
+  { label: '🔄 Refactor', prompt: 'Refactor this code to be cleaner:' },
+  { label: '📊 Analyze', prompt: 'Analyze the following data:' },
+];
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -387,6 +396,11 @@ export default function App() {
     );
   };
 
+  const handleQuickAction = (prompt) => {
+    setInputValue(prompt + ' ');
+    textareaRef.current?.focus();
+  };
+
   // ---- Toggle sidebar (mobile) ----
   const toggleSidebar = () => {
     setSidebarOpen((prev) => !prev);
@@ -496,6 +510,18 @@ export default function App() {
             >
               <SendIcon />
             </button>
+          </div>
+          <div className="quick-actions">
+            {QUICK_ACTIONS.map((action) => (
+              <button
+                key={action.label}
+                className="quick-action-btn"
+                onClick={() => handleQuickAction(action.prompt)}
+                disabled={isThinking || isStreaming}
+              >
+                {action.label}
+              </button>
+            ))}
           </div>
           <p className="input-disclaimer">
             This is a demo clone with canned responses. No real AI is used.

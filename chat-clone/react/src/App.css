@@ -714,6 +714,38 @@ body {
   margin-left: 10px;
 }
 
+/* ---- Quick Action Buttons ---- */
+.quick-actions {
+  max-width: 800px;
+  margin: 8px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quick-action-btn {
+  background: #2d2d44;
+  border: 1px solid #3a3a52;
+  border-radius: 18px;
+  color: #b0b0c0;
+  font-size: 12px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.quick-action-btn:hover {
+  background: #3a3a52;
+  color: #d4a574;
+  border-color: #d4a574;
+}
+
+.quick-action-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* ---- Scrollbar Styling ---- */
 .messages-container::-webkit-scrollbar,
 .conversation-list::-webkit-scrollbar {

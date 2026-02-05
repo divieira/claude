@@ -33,6 +33,15 @@ TOOLS = [
     {"id": "file_analysis", "name": "File Analysis", "icon": "📄"},
 ]
 
+QUICK_ACTIONS = [
+    ("✍️ Write code", "Write a Python function that"),
+    ("💡 Explain concept", "Explain the concept of"),
+    ("📝 Summarize", "Summarize the following text:"),
+    ("🐛 Debug", "Help me debug this code:"),
+    ("🔄 Refactor", "Refactor this code to be cleaner:"),
+    ("📊 Analyze", "Analyze the following data:"),
+]
+
 
 def stream_tokens(text: str):
     """Generator that yields words one at a time with small delays for streaming."""
@@ -193,6 +202,13 @@ section[data-testid="stSidebar"] hr {
     font-size: 0.8rem;
     margin-left: 8px;
 }
+
+/* ---- Quick action buttons ---- */
+div[data-testid="stHorizontalBlock"] .stButton > button[kind="secondary"] {
+    font-size: 0.78rem !important;
+    padding: 0.2rem 0.8rem !important;
+    border-radius: 18px !important;
+}
 </style>
 """
 
@@ -215,6 +231,8 @@ def init_state():
         st.session_state.selected_model = "Claude Sonnet 4"
     if "enabled_tools" not in st.session_state:
         st.session_state.enabled_tools = ["web_search", "code_interpreter"]
+    if "prefill" not in st.session_state:
+        st.session_state.prefill = ""
 
 
 def get_active_conversation() -> dict:
@@ -332,8 +350,21 @@ def main():
                         new_tools.append(tool["id"])
             st.session_state.enabled_tools = new_tools
 
+    # Quick action buttons
+    qa_cols = st.columns(len(QUICK_ACTIONS))
+    for i, (label, prefill_text) in enumerate(QUICK_ACTIONS):
+        with qa_cols[i]:
+            if st.button(label, key=f"qa_{i}", use_container_width=True):
+                st.session_state.prefill = prefill_text
+                st.rerun()
+
     # Chat input
-    if prompt := st.chat_input("Message Claude..."):
+    prefill = st.session_state.pop("prefill", "")
+    if prefill:
+        prompt = prefill
+    else:
+        prompt = st.chat_input("Message Claude...")
+    if prompt:
         # --- User message ---
         with st.chat_message("user", avatar="👤"):
             st.markdown(prompt)
