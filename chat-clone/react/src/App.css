@@ -383,6 +383,119 @@ body {
   }
 }
 
+/* ---- Thinking Trace ---- */
+.thinking-trace {
+  margin-bottom: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.thinking-trace-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(212, 165, 116, 0.08);
+  border: 1px solid rgba(212, 165, 116, 0.15);
+  border-radius: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  color: #8080a0;
+  font-size: 13px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.thinking-trace-toggle:hover {
+  background: rgba(212, 165, 116, 0.12);
+  color: #b0b0c0;
+}
+
+.thinking-trace-open {
+  border-radius: 10px 10px 0 0;
+  border-bottom: none;
+}
+
+.thinking-trace-icon {
+  font-size: 14px;
+}
+
+.thinking-trace-label {
+  flex: 1;
+  font-weight: 500;
+}
+
+.thinking-trace-chevron {
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+
+.chevron-open {
+  transform: rotate(90deg);
+}
+
+.thinking-trace-content {
+  background: rgba(212, 165, 116, 0.05);
+  border: 1px solid rgba(212, 165, 116, 0.15);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  padding: 10px 12px;
+}
+
+.thinking-trace-section {
+  margin-bottom: 10px;
+}
+
+.thinking-trace-section:last-child {
+  margin-bottom: 0;
+}
+
+.thinking-trace-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8080a0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.thinking-trace-reasoning {
+  font-size: 12px;
+  color: #9090a8;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.thinking-trace-tool {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(26, 26, 46, 0.5);
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.thinking-trace-tool:last-child {
+  margin-bottom: 0;
+}
+
+.tool-call-icon {
+  font-size: 11px;
+}
+
+.tool-call-name {
+  color: #d4a574;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-weight: 500;
+}
+
+.tool-call-query {
+  color: #707088;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
 /* ---- Welcome Screen ---- */
 .welcome-screen {
   display: flex;

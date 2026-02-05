@@ -25,6 +25,34 @@ def pick_response(user_message: str) -> str:
     return CANNED_RESPONSES[char_sum % len(CANNED_RESPONSES)]
 
 
+def pick_thinking_trace(user_message: str) -> dict:
+    """Pick a thinking trace by hashing the user message."""
+    char_sum = sum(ord(c) for c in user_message)
+    return THINKING_TRACES[char_sum % len(THINKING_TRACES)]
+
+
+def format_thinking_html(trace: dict) -> str:
+    """Format a thinking trace as an HTML details/summary block."""
+    tools_html = ""
+    if trace["tools"]:
+        tool_lines = []
+        for t in trace["tools"]:
+            tool_lines.append(f'<div style="background:rgba(26,26,46,0.5);border-radius:6px;padding:3px 8px;margin:3px 0;font-family:monospace;font-size:0.82rem;">'
+                            f'<span style="color:#d4a574;">⚡ {t["name"]}</span>'
+                            f'<span style="color:#707088;">("{t["query"]}")</span></div>')
+        tools_html = '<div style="margin-top:6px;"><div style="font-size:0.72rem;font-weight:600;color:#8080a0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Tool Use</div>' + "".join(tool_lines) + '</div>'
+
+    return (
+        f'<details style="background:rgba(212,165,116,0.06);border:1px solid rgba(212,165,116,0.15);border-radius:10px;padding:6px 12px;margin-bottom:10px;">'
+        f'<summary style="cursor:pointer;color:#8080a0;font-size:0.85rem;font-weight:500;">💭 Thinking...</summary>'
+        f'<div style="padding-top:6px;">'
+        f'<div style="font-size:0.72rem;font-weight:600;color:#8080a0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Reasoning</div>'
+        f'<p style="font-size:0.82rem;color:#9090a8;font-style:italic;margin-bottom:6px;">{trace["reasoning"]}</p>'
+        f'{tools_html}'
+        f'</div></details>\n\n'
+    )
+
+
 MODELS = ["Claude Opus 4", "Claude Sonnet 4", "Claude Haiku", "GPT-4o", "GPT-4o mini"]
 
 TOOLS = [
@@ -41,6 +69,42 @@ QUICK_ACTIONS = [
     ("🐛 Debug", "Help me debug this code:"),
     ("🔄 Refactor", "Refactor this code to be cleaner:"),
     ("📊 Analyze", "Analyze the following data:"),
+]
+
+THINKING_TRACES = [
+    {
+        "reasoning": "The user is asking about problem-solving approaches. I should break this down into fundamental principles and provide actionable steps.",
+        "tools": [
+            {"name": "web_search", "query": "effective problem-solving frameworks"},
+        ],
+    },
+    {
+        "reasoning": "This looks like a coding question. I need to provide a clear, working example with good structure.",
+        "tools": [
+            {"name": "code_interpreter", "query": "generate solution template"},
+            {"name": "web_search", "query": "best practices code organization"},
+        ],
+    },
+    {
+        "reasoning": "The user wants to explore a topic from multiple angles. I should consider historical context, modern developments, and practical applications.",
+        "tools": [
+            {"name": "web_search", "query": "topic historical context"},
+            {"name": "web_search", "query": "modern approaches and developments"},
+        ],
+    },
+    {
+        "reasoning": "This is a common developer challenge. I should provide an overview, key principles, and a concrete code example.",
+        "tools": [
+            {"name": "code_interpreter", "query": "analyze code patterns"},
+            {"name": "file_analysis", "query": "review best practices"},
+        ],
+    },
+    {
+        "reasoning": "The user is asking about trade-offs in engineering decisions. I should present this in a structured comparison format.",
+        "tools": [
+            {"name": "web_search", "query": "engineering trade-off analysis"},
+        ],
+    },
 ]
 
 
@@ -385,6 +449,24 @@ footer {
     padding: 4px 10px !important;
     font-size: 0.82rem !important;
 }
+
+/* ── Thinking trace ────────────────────────────────────────────────────── */
+#chatbot details {
+    background: rgba(212, 165, 116, 0.06) !important;
+    border: 1px solid rgba(212, 165, 116, 0.15) !important;
+    border-radius: 10px !important;
+    padding: 6px 12px !important;
+    margin-bottom: 10px !important;
+}
+#chatbot details summary {
+    cursor: pointer !important;
+    color: #8080a0 !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+}
+#chatbot details summary:hover {
+    color: #d4a574 !important;
+}
 """
 
 # ---------------------------------------------------------------------------
@@ -575,6 +657,8 @@ def create_app():
 
             user_text = last_msg["content"]
             response = pick_response(user_text)
+            trace = pick_thinking_trace(user_text)
+            thinking_html = format_thinking_html(trace)
 
             # Build the display list from existing messages
             base_messages = [
@@ -582,17 +666,17 @@ def create_app():
                 for m in convos[idx]["messages"]
             ]
 
-            # Stream character by character
+            # Stream character by character, prefixed with thinking trace
             partial = ""
             for char in response:
                 partial += char
-                display = base_messages + [{"role": "assistant", "content": partial}]
+                display = base_messages + [{"role": "assistant", "content": thinking_html + partial}]
                 yield display, convos
                 time.sleep(0.02)
 
             # Store final assistant message in state
             convos[idx]["messages"].append(
-                {"role": "assistant", "content": response}
+                {"role": "assistant", "content": thinking_html + response}
             )
 
             final_display = [

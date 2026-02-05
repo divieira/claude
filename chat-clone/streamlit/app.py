@@ -42,6 +42,48 @@ QUICK_ACTIONS = [
     ("📊 Analyze", "Analyze the following data:"),
 ]
 
+THINKING_TRACES = [
+    {
+        "reasoning": "The user is asking about problem-solving approaches. I should break this down into fundamental principles and provide actionable steps.",
+        "tools": [
+            {"name": "web_search", "query": "effective problem-solving frameworks"},
+        ],
+    },
+    {
+        "reasoning": "This looks like a coding question. I need to provide a clear, working example with good structure.",
+        "tools": [
+            {"name": "code_interpreter", "query": "generate solution template"},
+            {"name": "web_search", "query": "best practices code organization"},
+        ],
+    },
+    {
+        "reasoning": "The user wants to explore a topic from multiple angles. I should consider historical context, modern developments, and practical applications.",
+        "tools": [
+            {"name": "web_search", "query": "topic historical context"},
+            {"name": "web_search", "query": "modern approaches and developments"},
+        ],
+    },
+    {
+        "reasoning": "This is a common developer challenge. I should provide an overview, key principles, and a concrete code example.",
+        "tools": [
+            {"name": "code_interpreter", "query": "analyze code patterns"},
+            {"name": "file_analysis", "query": "review best practices"},
+        ],
+    },
+    {
+        "reasoning": "The user is asking about trade-offs in engineering decisions. I should present this in a structured comparison format.",
+        "tools": [
+            {"name": "web_search", "query": "engineering trade-off analysis"},
+        ],
+    },
+]
+
+
+def pick_thinking_trace(text: str) -> dict:
+    """Pick a thinking trace by hashing the user message."""
+    char_sum = sum(ord(c) for c in text)
+    return THINKING_TRACES[char_sum % len(THINKING_TRACES)]
+
 
 def stream_tokens(text: str):
     """Generator that yields words one at a time with small delays for streaming."""
@@ -228,6 +270,39 @@ div[data-testid="stHorizontalBlock"] .stButton > button[kind="secondary"] {
     font-size: 0.8rem;
     color: #b0b0c0;
 }
+
+/* ---- Thinking trace ---- */
+.thinking-trace {
+    background: rgba(212, 165, 116, 0.06);
+    border: 1px solid rgba(212, 165, 116, 0.15);
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    font-size: 0.82rem;
+}
+.thinking-trace-title {
+    color: #8080a0;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+.thinking-trace-reasoning {
+    color: #9090a8;
+    font-style: italic;
+    margin-bottom: 6px;
+}
+.thinking-trace-tool {
+    background: rgba(26, 26, 46, 0.5);
+    border-radius: 6px;
+    padding: 3px 8px;
+    margin-bottom: 3px;
+    font-family: monospace;
+    font-size: 0.78rem;
+}
+.tool-name { color: #d4a574; }
+.tool-query { color: #707088; }
 </style>
 """
 
@@ -344,6 +419,15 @@ def main():
     for msg in messages:
         avatar = "👤" if msg["role"] == "user" else "🤖"
         with st.chat_message(msg["role"], avatar=avatar):
+            if msg["role"] == "assistant" and msg.get("thinking"):
+                with st.expander("💭 Thinking...", expanded=False):
+                    trace = msg["thinking"]
+                    st.markdown(f"**Reasoning**")
+                    st.markdown(f"*{trace['reasoning']}*")
+                    if trace.get("tools"):
+                        st.markdown("**Tool Use**")
+                        for tool in trace["tools"]:
+                            st.code(f"{tool['name']}(\"{tool['query']}\")", language="python")
             st.markdown(msg["content"])
 
     # Options bar
@@ -426,12 +510,21 @@ def main():
 
         # --- Assistant response (streamed) ---
         response_text = pick_response(prompt)
+        thinking_trace = pick_thinking_trace(prompt)
         with st.chat_message("assistant", avatar="🤖"):
             with st.status("Claude is thinking...", expanded=False):
                 time.sleep(0.4)  # brief "thinking" pause
+            # Collapsible thinking trace
+            with st.expander("💭 Thinking...", expanded=False):
+                st.markdown(f"**Reasoning**")
+                st.markdown(f"*{thinking_trace['reasoning']}*")
+                if thinking_trace["tools"]:
+                    st.markdown("**Tool Use**")
+                    for tool in thinking_trace["tools"]:
+                        st.code(f"{tool['name']}(\"{tool['query']}\")", language="python")
             full_response = st.write_stream(stream_tokens(response_text))
 
-        messages.append({"role": "assistant", "content": full_response})
+        messages.append({"role": "assistant", "content": full_response, "thinking": thinking_trace})
         st.rerun()
 
 

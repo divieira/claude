@@ -38,6 +38,42 @@ const QUICK_ACTIONS = [
   { label: '📊 Analyze', prompt: 'Analyze the following data:' },
 ];
 
+const THINKING_TRACES = [
+  {
+    reasoning: "The user is asking about problem-solving approaches. I should break this down into fundamental principles and provide actionable steps. Let me think about the most effective frameworks...",
+    tools: [
+      { name: "web_search", query: "effective problem-solving frameworks" },
+    ],
+  },
+  {
+    reasoning: "This looks like a coding question. I need to provide a clear, working example with good structure. Let me consider the best way to demonstrate this systematically...",
+    tools: [
+      { name: "code_interpreter", query: "generate solution template" },
+      { name: "web_search", query: "best practices code organization" },
+    ],
+  },
+  {
+    reasoning: "The user wants to explore a topic from multiple angles. I should consider historical context, modern developments, and practical applications. Let me gather some relevant perspectives...",
+    tools: [
+      { name: "web_search", query: "topic historical context" },
+      { name: "web_search", query: "modern approaches and developments" },
+    ],
+  },
+  {
+    reasoning: "This is a common developer challenge. I should provide an overview, key principles, and a concrete code example. Let me structure this clearly with headers...",
+    tools: [
+      { name: "code_interpreter", query: "analyze code patterns" },
+      { name: "file_analysis", query: "review best practices" },
+    ],
+  },
+  {
+    reasoning: "The user is asking about trade-offs in engineering decisions. I should present this in a structured comparison format. Let me think about the key dimensions to compare...",
+    tools: [
+      { name: "web_search", query: "engineering trade-off analysis" },
+    ],
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -198,6 +234,48 @@ function ThinkingIndicator() {
 }
 
 // ---------------------------------------------------------------------------
+// ThinkingTrace
+// ---------------------------------------------------------------------------
+function ThinkingTrace({ trace }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (!trace) return null;
+
+  return (
+    <div className="thinking-trace">
+      <button
+        className={`thinking-trace-toggle ${isOpen ? 'thinking-trace-open' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="thinking-trace-icon">💭</span>
+        <span className="thinking-trace-label">Thinking{isOpen ? '' : '...'}</span>
+        <span className={`thinking-trace-chevron ${isOpen ? 'chevron-open' : ''}`}>▸</span>
+      </button>
+      {isOpen && (
+        <div className="thinking-trace-content">
+          <div className="thinking-trace-section">
+            <div className="thinking-trace-section-title">Reasoning</div>
+            <p className="thinking-trace-reasoning">{trace.reasoning}</p>
+          </div>
+          {trace.tools.length > 0 && (
+            <div className="thinking-trace-section">
+              <div className="thinking-trace-section-title">Tool Use</div>
+              {trace.tools.map((tool, i) => (
+                <div key={i} className="thinking-trace-tool">
+                  <span className="tool-call-icon">⚡</span>
+                  <span className="tool-call-name">{tool.name}</span>
+                  <span className="tool-call-query">("{tool.query}")</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // MessageBubble
 // ---------------------------------------------------------------------------
 function MessageBubble({ message }) {
@@ -212,11 +290,14 @@ function MessageBubble({ message }) {
         {isUser ? (
           <div className="message-text">{message.content}</div>
         ) : (
-          <div className="message-text markdown-body">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
-            </ReactMarkdown>
-          </div>
+          <>
+            {message.thinking && <ThinkingTrace trace={message.thinking} />}
+            <div className="message-text markdown-body">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          </>
         )}
       </div>
       {isUser && (
@@ -343,7 +424,8 @@ export default function App() {
       setIsThinking(false);
       setIsStreaming(true);
 
-      const assistantMsg = { id: nanoid(), role: 'assistant', content: '' };
+      const trace = THINKING_TRACES[responseIndex];
+      const assistantMsg = { id: nanoid(), role: 'assistant', content: '', thinking: trace };
 
       updateConversation(convId, (conv) => ({
         ...conv,
