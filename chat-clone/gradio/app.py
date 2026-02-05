@@ -355,6 +355,36 @@ footer {
     border-color: #d4a574 !important;
     color: #d4a574 !important;
 }
+
+/* ── File upload ───────────────────────────────────────────────────────── */
+#file-upload {
+    min-width: auto !important;
+}
+#file-upload .upload-button {
+    background-color: transparent !important;
+    border: 1px solid #3d3d5c !important;
+    border-radius: 10px !important;
+    color: #b0b0c0 !important;
+    font-size: 0.85rem !important;
+    padding: 6px 14px !important;
+    cursor: pointer !important;
+    transition: border-color 0.2s, color 0.2s !important;
+}
+#file-upload .upload-button:hover {
+    border-color: #d4a574 !important;
+    color: #d4a574 !important;
+}
+#file-display {
+    background: transparent !important;
+}
+#file-display .file-preview {
+    background-color: #2d2d44 !important;
+    border: 1px solid #3d3d5c !important;
+    border-radius: 8px !important;
+    color: #b0b0c0 !important;
+    padding: 4px 10px !important;
+    font-size: 0.82rem !important;
+}
 """
 
 # ---------------------------------------------------------------------------
@@ -385,6 +415,7 @@ def create_app():
         # -- State -----------------------------------------------------------
         conversations = gr.State(_default_conversations())
         active_idx = gr.State(0)
+        uploaded_files = gr.State([])
 
         # -- Layout ----------------------------------------------------------
         with gr.Row():
@@ -424,12 +455,24 @@ def create_app():
                         lines=1,
                         max_lines=5,
                     )
+                    file_upload = gr.UploadButton(
+                        "📎",
+                        file_count="multiple",
+                        elem_id="file-upload",
+                        scale=0,
+                        min_width=50,
+                    )
                     send_btn = gr.Button(
                         "Send",
                         elem_id="send-btn",
                         scale=1,
                         min_width=80,
                     )
+                file_display = gr.Markdown(
+                    value="",
+                    elem_id="file-display",
+                    visible=False,
+                )
                 with gr.Accordion("⚙️ Options", open=False, elem_id="options-accordion"):
                     with gr.Row(elem_id="options-row"):
                         model_select = gr.Dropdown(
@@ -465,7 +508,7 @@ def create_app():
                     title += "..."
                 convos[idx]["title"] = title
 
-        def user_submit(user_message, convos, idx):
+        def user_submit(user_message, convos, idx, files):
             """Handle user submitting a message. Returns updated state immediately
             so the UI shows the user message before streaming starts."""
             if not user_message or not user_message.strip():
@@ -482,13 +525,19 @@ def create_app():
                     convos,
                     idx,
                     gr.update(choices=choices, value=current),
+                    gr.update(visible=False, value=""),
+                    [],
                 )
 
             # Add user message to conversation
+            file_prefix = ""
+            if files:
+                file_prefix = "📎 " + ", ".join(files) + "\n\n"
             convos[idx]["messages"].append(
-                {"role": "user", "content": user_message.strip()}
+                {"role": "user", "content": file_prefix + user_message.strip()}
             )
             _set_title_from_message(convos, idx, user_message)
+            files.clear()
 
             # Prepare display messages
             messages_display = [
@@ -505,6 +554,8 @@ def create_app():
                 convos,
                 idx,
                 gr.update(choices=choices, value=current),
+                gr.update(visible=False, value=""),
+                [],
             )
 
         def bot_stream(convos, idx):
@@ -586,8 +637,8 @@ def create_app():
         # Submit via button or Enter key
         submit_event_args = dict(
             fn=user_submit,
-            inputs=[msg_input, conversations, active_idx],
-            outputs=[chatbot, msg_input, conversations, active_idx, convo_radio],
+            inputs=[msg_input, conversations, active_idx, uploaded_files],
+            outputs=[chatbot, msg_input, conversations, active_idx, convo_radio, file_display, uploaded_files],
         )
         stream_event_args = dict(
             fn=bot_stream,
@@ -622,6 +673,26 @@ def create_app():
                 inputs=[],
                 outputs=[msg_input],
             )
+
+        # File upload handler
+        def handle_file_upload(files, current_files):
+            if files is None:
+                return current_files, gr.update(visible=False, value="")
+            new_files = []
+            for f in files:
+                name = f.name if hasattr(f, 'name') else str(f).split('/')[-1]
+                new_files.append(name)
+            all_files = current_files + new_files
+            if all_files:
+                pills = " ".join(f"📄 **{n}**" for n in all_files)
+                return all_files, gr.update(visible=True, value=pills)
+            return all_files, gr.update(visible=False, value="")
+
+        file_upload.upload(
+            fn=handle_file_upload,
+            inputs=[file_upload, uploaded_files],
+            outputs=[uploaded_files, file_display],
+        )
 
     return app
 

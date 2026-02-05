@@ -746,6 +746,86 @@ body {
   cursor: default;
 }
 
+/* ---- File Upload ---- */
+.attach-btn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #606078;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+
+.attach-btn:hover {
+  background: #3a3a52;
+  color: #d4a574;
+}
+
+.attach-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.attached-files {
+  max-width: 800px;
+  margin: 0 auto 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.file-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #2d2d44;
+  border: 1px solid #3a3a52;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #b0b0c0;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.file-pill-icon {
+  font-size: 14px;
+}
+
+.file-pill-name {
+  color: #e0e0e0;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-pill-size {
+  color: #606078;
+  font-size: 11px;
+}
+
+.file-pill-remove {
+  background: none;
+  border: none;
+  color: #606078;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.file-pill-remove:hover {
+  color: #e0e0e0;
+}
+
 /* ---- Scrollbar Styling ---- */
 .messages-container::-webkit-scrollbar,
 .conversation-list::-webkit-scrollbar {

@@ -209,6 +209,25 @@ div[data-testid="stHorizontalBlock"] .stButton > button[kind="secondary"] {
     padding: 0.2rem 0.8rem !important;
     border-radius: 18px !important;
 }
+
+/* ---- File pills ---- */
+.file-pill-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.file-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #2d2d44;
+    border: 1px solid #3d3d5c;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    color: #b0b0c0;
+}
 </style>
 """
 
@@ -233,6 +252,8 @@ def init_state():
         st.session_state.enabled_tools = ["web_search", "code_interpreter"]
     if "prefill" not in st.session_state:
         st.session_state.prefill = ""
+    if "uploaded_files" not in st.session_state:
+        st.session_state.uploaded_files = []
 
 
 def get_active_conversation() -> dict:
@@ -358,6 +379,29 @@ def main():
                 st.session_state.prefill = prefill_text
                 st.rerun()
 
+    # File upload
+    uploaded = st.file_uploader(
+        "Attach files",
+        accept_multiple_files=True,
+        key="file_uploader",
+        label_visibility="collapsed",
+    )
+    if uploaded:
+        st.session_state.uploaded_files = [
+            {"name": f.name, "size": f.size, "type": f.type} for f in uploaded
+        ]
+    else:
+        st.session_state.uploaded_files = []
+
+    # Show attached file pills
+    if st.session_state.uploaded_files:
+        pills_html = '<div class="file-pill-container">'
+        for f in st.session_state.uploaded_files:
+            size_str = f"{f['size'] / 1024:.1f} KB" if f["size"] >= 1024 else f"{f['size']} B"
+            pills_html += f'<span class="file-pill">📄 {f["name"]} ({size_str})</span>'
+        pills_html += "</div>"
+        st.markdown(pills_html, unsafe_allow_html=True)
+
     # Chat input
     prefill = st.session_state.pop("prefill", "")
     if prefill:
@@ -368,7 +412,12 @@ def main():
         # --- User message ---
         with st.chat_message("user", avatar="👤"):
             st.markdown(prompt)
-        messages.append({"role": "user", "content": prompt})
+        # Include file names in the message if files are attached
+        file_prefix = ""
+        if st.session_state.uploaded_files:
+            file_names = ", ".join(f["name"] for f in st.session_state.uploaded_files)
+            file_prefix = f"📎 {file_names}\n\n"
+        messages.append({"role": "user", "content": file_prefix + prompt})
 
         # Update conversation title from first user message
         if len(messages) == 1:

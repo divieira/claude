@@ -124,6 +124,23 @@ function GearIcon() {
   );
 }
 
+function PaperclipIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+function CloseSmallIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
 function OptionsPanel({ selectedModel, onModelChange, enabledTools, onToolToggle, onClose }) {
   return (
     <div className="options-panel">
@@ -240,10 +257,12 @@ export default function App() {
   const [selectedModel, setSelectedModel] = useState('sonnet');
   const [enabledTools, setEnabledTools] = useState(['web_search', 'code_interpreter']);
   const [showOptions, setShowOptions] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState([]);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const optionsPanelRef = useRef(null);
+  const fileInputRef = useRef(null);
   const streamIntervalRef = useRef(null);
 
   const activeConversation = conversations.find((c) => c.id === activeId);
@@ -295,7 +314,10 @@ export default function App() {
     const text = inputValue.trim();
     if (!text || isThinking || isStreaming) return;
 
-    const userMsg = { id: nanoid(), role: 'user', content: text };
+    const filePrefix = attachedFiles.length > 0
+      ? `📎 ${attachedFiles.map(f => f.name).join(', ')}\n\n`
+      : '';
+    const userMsg = { id: nanoid(), role: 'user', content: filePrefix + text };
     const convId = activeId;
 
     // Add user message & update title if this is the first message
@@ -309,6 +331,7 @@ export default function App() {
     });
 
     setInputValue('');
+    setAttachedFiles([]);
     setIsThinking(true);
 
     // Pick a canned response
@@ -401,6 +424,28 @@ export default function App() {
     textareaRef.current?.focus();
   };
 
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    const newFiles = files.map((f) => ({
+      id: nanoid(),
+      name: f.name,
+      size: f.size,
+      type: f.type,
+    }));
+    setAttachedFiles((prev) => [...prev, ...newFiles]);
+    e.target.value = '';
+  };
+
+  const removeFile = (fileId) => {
+    setAttachedFiles((prev) => prev.filter((f) => f.id !== fileId));
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  };
+
   // ---- Toggle sidebar (mobile) ----
   const toggleSidebar = () => {
     setSidebarOpen((prev) => !prev);
@@ -473,7 +518,37 @@ export default function App() {
 
         {/* Input area */}
         <div className="input-area">
+          {attachedFiles.length > 0 && (
+            <div className="attached-files">
+              {attachedFiles.map((file) => (
+                <div key={file.id} className="file-pill">
+                  <span className="file-pill-icon">📄</span>
+                  <span className="file-pill-name">{file.name}</span>
+                  <span className="file-pill-size">{formatFileSize(file.size)}</span>
+                  <button className="file-pill-remove" onClick={() => removeFile(file.id)}>
+                    <CloseSmallIcon />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="input-wrapper">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+              accept=".txt,.pdf,.js,.jsx,.ts,.tsx,.py,.md,.csv,.json,.html,.css,.png,.jpg,.jpeg,.gif,.svg"
+            />
+            <button
+              className="attach-btn"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Attach file"
+              disabled={isThinking || isStreaming}
+            >
+              <PaperclipIcon />
+            </button>
             <button
               className="options-btn"
               onClick={() => setShowOptions((prev) => !prev)}
