@@ -25,6 +25,16 @@ def pick_response(user_message: str) -> str:
     return CANNED_RESPONSES[char_sum % len(CANNED_RESPONSES)]
 
 
+MODELS = ["Claude Opus 4", "Claude Sonnet 4", "Claude Haiku", "GPT-4o", "GPT-4o mini"]
+
+TOOLS = [
+    ("web_search", "🔍 Web Search"),
+    ("code_interpreter", "💻 Code Interpreter"),
+    ("image_gen", "🎨 Image Generation"),
+    ("file_analysis", "📄 File Analysis"),
+]
+
+
 # ---------------------------------------------------------------------------
 # Custom CSS -- dark Claude-like theme
 # ---------------------------------------------------------------------------
@@ -256,6 +266,62 @@ label, .label-wrap {
 footer {
     display: none !important;
 }
+
+/* ── Options area ──────────────────────────────────────────────────────── */
+#options-row {
+    margin-top: 4px !important;
+}
+#options-row .block {
+    background: transparent !important;
+}
+#model-select {
+    background: transparent !important;
+}
+#model-select select,
+#model-select input {
+    background-color: #2d2d44 !important;
+    border: 1px solid #3d3d5c !important;
+    border-radius: 8px !important;
+    color: #e0e0e0 !important;
+    font-size: 0.85rem !important;
+}
+#tool-toggles {
+    background: transparent !important;
+}
+#tool-toggles .wrap {
+    gap: 6px !important;
+}
+#tool-toggles label {
+    background-color: #2d2d44 !important;
+    border: 1px solid #3d3d5c !important;
+    border-radius: 8px !important;
+    color: #b0b0c0 !important;
+    padding: 4px 10px !important;
+    font-size: 0.82rem !important;
+    cursor: pointer !important;
+    transition: border-color 0.2s, color 0.2s !important;
+}
+#tool-toggles label.selected {
+    border-color: #d4a574 !important;
+    color: #d4a574 !important;
+}
+#tool-toggles input[type="checkbox"] {
+    display: none !important;
+}
+#options-accordion {
+    background: transparent !important;
+    border: 1px solid #3d3d5c !important;
+    border-radius: 10px !important;
+    margin-top: 8px !important;
+}
+#options-accordion .label-wrap {
+    color: #8080a0 !important;
+    font-size: 0.85rem !important;
+    padding: 6px 12px !important;
+}
+#options-accordion .label-wrap:hover {
+    color: #d4a574 !important;
+}
 """
 
 # ---------------------------------------------------------------------------
@@ -331,6 +397,24 @@ def create_app():
                         scale=1,
                         min_width=80,
                     )
+                with gr.Accordion("⚙️ Options", open=False, elem_id="options-accordion"):
+                    with gr.Row(elem_id="options-row"):
+                        model_select = gr.Dropdown(
+                            choices=MODELS,
+                            value="Claude Sonnet 4",
+                            label="Model",
+                            elem_id="model-select",
+                            scale=1,
+                            interactive=True,
+                        )
+                        tool_toggles = gr.CheckboxGroup(
+                            choices=[t[1] for t in TOOLS],
+                            value=["🔍 Web Search", "💻 Code Interpreter"],
+                            label="Tools",
+                            elem_id="tool-toggles",
+                            scale=2,
+                            interactive=True,
+                        )
 
         # -- Callbacks -------------------------------------------------------
 

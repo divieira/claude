@@ -14,6 +14,21 @@ const CANNED_RESPONSES = [
   "That's a fascinating area! Let me share some thoughts.\n\nThe fundamental challenge here is balancing **trade-offs**. Every engineering decision involves choosing between:\n\n| Option | Pros | Cons |\n|--------|------|------|\n| Approach A | Simple, fast | Limited flexibility |\n| Approach B | Flexible | More complex |\n| Approach C | Balanced | Moderate on both |\n\nIn my experience, *starting simple and iterating* tends to produce the best outcomes. You can always add complexity later, but removing it is much harder.\n\nWhat constraints are you working with?"
 ];
 
+const MODELS = [
+  { id: 'opus', name: 'Claude Opus 4' },
+  { id: 'sonnet', name: 'Claude Sonnet 4' },
+  { id: 'haiku', name: 'Claude Haiku' },
+  { id: 'gpt4o', name: 'GPT-4o' },
+  { id: 'gpt4o-mini', name: 'GPT-4o mini' },
+];
+
+const TOOLS = [
+  { id: 'web_search', name: 'Web Search', icon: '🔍' },
+  { id: 'code_interpreter', name: 'Code Interpreter', icon: '💻' },
+  { id: 'image_gen', name: 'Image Generation', icon: '🎨' },
+  { id: 'file_analysis', name: 'File Analysis', icon: '📄' },
+];
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -91,6 +106,58 @@ function MenuIcon() {
   );
 }
 
+function GearIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+    </svg>
+  );
+}
+
+function OptionsPanel({ selectedModel, onModelChange, enabledTools, onToolToggle, onClose }) {
+  return (
+    <div className="options-panel">
+      <div className="options-header">
+        <span className="options-title">Options</span>
+        <button className="options-close" onClick={onClose}>&times;</button>
+      </div>
+      <div className="options-section">
+        <div className="options-section-title">Model</div>
+        {MODELS.map((model) => (
+          <label key={model.id} className={`model-option ${selectedModel === model.id ? 'model-option-active' : ''}`}>
+            <input
+              type="radio"
+              name="model"
+              value={model.id}
+              checked={selectedModel === model.id}
+              onChange={() => onModelChange(model.id)}
+            />
+            <span>{model.name}</span>
+          </label>
+        ))}
+      </div>
+      <div className="options-section">
+        <div className="options-section-title">Tools</div>
+        {TOOLS.map((tool) => (
+          <label key={tool.id} className="tool-toggle">
+            <span className="tool-info">
+              <span className="tool-icon">{tool.icon}</span>
+              <span>{tool.name}</span>
+            </span>
+            <div
+              className={`toggle-switch ${enabledTools.includes(tool.id) ? 'toggle-on' : ''}`}
+              onClick={(e) => { e.preventDefault(); onToolToggle(tool.id); }}
+            >
+              <div className="toggle-knob" />
+            </div>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // ThinkingIndicator
 // ---------------------------------------------------------------------------
@@ -161,9 +228,13 @@ export default function App() {
   const [isThinking, setIsThinking] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('sonnet');
+  const [enabledTools, setEnabledTools] = useState(['web_search', 'code_interpreter']);
+  const [showOptions, setShowOptions] = useState(false);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const optionsPanelRef = useRef(null);
   const streamIntervalRef = useRef(null);
 
   const activeConversation = conversations.find((c) => c.id === activeId);
@@ -192,6 +263,16 @@ export default function App() {
         Math.min(textareaRef.current.scrollHeight, 200) + 'px';
     }
   }, [inputValue]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showOptions && optionsPanelRef.current && !optionsPanelRef.current.contains(e.target)) {
+        setShowOptions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showOptions]);
 
   // ---- Update a conversation in state ----
   const updateConversation = useCallback((convId, updater) => {
@@ -300,6 +381,12 @@ export default function App() {
     setSidebarOpen(false);
   };
 
+  const handleToolToggle = (toolId) => {
+    setEnabledTools((prev) =>
+      prev.includes(toolId) ? prev.filter((t) => t !== toolId) : [...prev, toolId]
+    );
+  };
+
   // ---- Toggle sidebar (mobile) ----
   const toggleSidebar = () => {
     setSidebarOpen((prev) => !prev);
@@ -344,6 +431,7 @@ export default function App() {
             <MenuIcon />
           </button>
           <span className="header-title">Claude</span>
+          <span className="model-badge">{MODELS.find(m => m.id === selectedModel)?.name}</span>
           <div className="header-spacer" />
         </header>
 
@@ -372,6 +460,24 @@ export default function App() {
         {/* Input area */}
         <div className="input-area">
           <div className="input-wrapper">
+            <button
+              className="options-btn"
+              onClick={() => setShowOptions((prev) => !prev)}
+              aria-label="Options"
+            >
+              <GearIcon />
+            </button>
+            {showOptions && (
+              <div ref={optionsPanelRef} className="options-panel-anchor">
+                <OptionsPanel
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                  enabledTools={enabledTools}
+                  onToolToggle={handleToolToggle}
+                  onClose={() => setShowOptions(false)}
+                />
+              </div>
+            )}
             <textarea
               ref={textareaRef}
               className="message-input"

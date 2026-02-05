@@ -24,6 +24,16 @@ def pick_response(text: str) -> str:
     return CANNED_RESPONSES[char_sum % len(CANNED_RESPONSES)]
 
 
+MODELS = ["Claude Opus 4", "Claude Sonnet 4", "Claude Haiku", "GPT-4o", "GPT-4o mini"]
+
+TOOLS = [
+    {"id": "web_search", "name": "Web Search", "icon": "🔍"},
+    {"id": "code_interpreter", "name": "Code Interpreter", "icon": "💻"},
+    {"id": "image_gen", "name": "Image Generation", "icon": "🎨"},
+    {"id": "file_analysis", "name": "File Analysis", "icon": "📄"},
+]
+
+
 def stream_tokens(text: str):
     """Generator that yields words one at a time with small delays for streaming."""
     words = text.split(" ")
@@ -165,6 +175,24 @@ html, body, [class*="css"] {
 section[data-testid="stSidebar"] hr {
     border-color: #2d2d44 !important;
 }
+
+/* ---- Options bar ---- */
+.options-bar {
+    background: #1a1a2e;
+    border: 1px solid #2d2d44;
+    border-radius: 12px;
+    padding: 0.5rem 1rem;
+    margin-bottom: 0.5rem;
+}
+.model-badge {
+    display: inline-block;
+    background: #2d2d44;
+    color: #8080a0;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    margin-left: 8px;
+}
 </style>
 """
 
@@ -183,6 +211,10 @@ def init_state():
         ]
     if "active_id" not in st.session_state:
         st.session_state.active_id = 0
+    if "selected_model" not in st.session_state:
+        st.session_state.selected_model = "Claude Sonnet 4"
+    if "enabled_tools" not in st.session_state:
+        st.session_state.enabled_tools = ["web_search", "code_interpreter"]
 
 
 def get_active_conversation() -> dict:
@@ -229,6 +261,7 @@ def main():
     # ------ Sidebar ------
     with st.sidebar:
         st.markdown("## Claude Chat")
+        st.caption(f"Model: {st.session_state.selected_model}")
         if st.button("➕  New Conversation", use_container_width=True, type="primary"):
             create_new_conversation()
             st.rerun()
@@ -273,6 +306,31 @@ def main():
         avatar = "👤" if msg["role"] == "user" else "🤖"
         with st.chat_message(msg["role"], avatar=avatar):
             st.markdown(msg["content"])
+
+    # Options bar
+    with st.expander("⚙️ Options", expanded=False):
+        opt_cols = st.columns([2, 3])
+        with opt_cols[0]:
+            st.session_state.selected_model = st.selectbox(
+                "Model",
+                MODELS,
+                index=MODELS.index(st.session_state.selected_model),
+                key="model_select",
+            )
+        with opt_cols[1]:
+            st.markdown("**Tools**")
+            tool_cols = st.columns(2)
+            new_tools = []
+            for i, tool in enumerate(TOOLS):
+                with tool_cols[i % 2]:
+                    enabled = st.checkbox(
+                        f"{tool['icon']} {tool['name']}",
+                        value=tool["id"] in st.session_state.enabled_tools,
+                        key=f"tool_{tool['id']}",
+                    )
+                    if enabled:
+                        new_tools.append(tool["id"])
+            st.session_state.enabled_tools = new_tools
 
     # Chat input
     if prompt := st.chat_input("Message Claude..."):
