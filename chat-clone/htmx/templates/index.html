@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Chat Clone — HTMX</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div id="app-container" class="app-container">
+        {% include 'partials/layout.html' %}
+    </div>
+
+    <script>
+        // Auto-scroll to bottom of messages
+        function scrollToBottom() {
+            const container = document.querySelector('.messages-container');
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        // Handle SSE messages for streaming
+        document.body.addEventListener('htmx:sseMessage', function(e) {
+            scrollToBottom();
+        });
+
+        // Handle form submission
+        document.body.addEventListener('htmx:beforeRequest', function(e) {
+            if (e.detail.elt.id === 'chat-form') {
+                const input = document.getElementById('message-input');
+                const filesInput = document.getElementById('files-input');
+                if (filesInput) {
+                    filesInput.value = Array.from(document.querySelectorAll('.file-pill-name'))
+                        .map(el => el.textContent).join(', ');
+                }
+            }
+        });
+
+        // Clear input after sending
+        document.body.addEventListener('htmx:afterRequest', function(e) {
+            if (e.detail.elt.id === 'chat-form') {
+                document.getElementById('message-input').value = '';
+                const filesList = document.getElementById('attached-files');
+                if (filesList) filesList.innerHTML = '';
+            }
+        });
+
+        // Handle file selection
+        function handleFileSelect(input) {
+            const filesList = document.getElementById('attached-files');
+            if (!filesList) return;
+
+            const files = Array.from(input.files);
+            files.forEach(file => {
+                const size = file.size < 1024 ? file.size + ' B' :
+                    file.size < 1048576 ? (file.size / 1024).toFixed(1) + ' KB' :
+                    (file.size / 1048576).toFixed(1) + ' MB';
+                const pill = document.createElement('div');
+                pill.className = 'file-pill';
+                pill.innerHTML = `
+                    <span class="file-pill-icon">📄</span>
+                    <span class="file-pill-name">${file.name}</span>
+                    <span class="file-pill-size">${size}</span>
+                    <button type="button" class="file-pill-remove" onclick="this.parentElement.remove()">×</button>
+                `;
+                filesList.appendChild(pill);
+            });
+            input.value = '';
+        }
+
+        // Handle quick action prefill
+        document.body.addEventListener('htmx:afterSwap', function(e) {
+            const prefill = document.getElementById('prefill-value');
+            if (prefill) {
+                document.getElementById('message-input').value = prefill.value;
+                document.getElementById('message-input').focus();
+                prefill.remove();
+            }
+            scrollToBottom();
+        });
+
+        // Toggle options panel
+        function toggleOptions() {
+            const panel = document.getElementById('options-panel');
+            panel.classList.toggle('options-hidden');
+        }
+
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            sidebar.classList.toggle('sidebar-open');
+            overlay.classList.toggle('overlay-visible');
+        }
+
+        // Initial scroll
+        document.addEventListener('DOMContentLoaded', scrollToBottom);
+    </script>
+</body>
+</html>

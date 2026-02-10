@@ -1,6 +1,6 @@
 # Chat Clone — Common Spec
 
-A minimal clone of Claude / ChatGPT, implemented in three UI libraries.
+A minimal clone of Claude / ChatGPT, implemented in four UI libraries.
 
 ## Essential Features
 
@@ -17,12 +17,20 @@ A minimal clone of Claude / ChatGPT, implemented in three UI libraries.
 | 9 | **Dark theme** | Dark background with light text, styled after Claude's UI. |
 | 10 | **Responsive layout** | Usable on both desktop and mobile widths. |
 
-## Non-goals (kept out for simplicity)
+## Additional Features
 
-- Real API calls to an LLM — all responses are canned / echoed.
+| # | Feature | Description |
+|---|---------|-------------|
+| 11 | **Options panel** | Model selector and tool toggles (cosmetic — doesn't affect responses). |
+| 12 | **Quick actions** | Suggestion chips below input to prefill common prompts. |
+| 13 | **File upload** | Attach files (displayed in user message, no actual processing). |
+| 14 | **Thinking trace** | Collapsible reasoning + tool use display before each response. |
+
+## Non-goals
+
+- Real API calls to an LLM — all responses are canned.
 - Authentication, accounts, or persistence beyond the session.
-- File upload, image generation, or tool use.
-- Settings or model selection.
+- Actual file processing or image generation.
 
 ## Visual Reference
 
@@ -43,3 +51,4 @@ The assistant picks a response by hashing the user message or cycling through th
 | `react/` | React 18 + Vite | `npm install && npm run dev` |
 | `streamlit/` | Streamlit | `pip install -r requirements.txt && streamlit run app.py` |
 | `gradio/` | Gradio | `pip install -r requirements.txt && python app.py` |
+| `htmx/` | Flask + HTMX | `pip install -r requirements.txt && python app.py` |
