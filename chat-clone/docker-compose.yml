@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  portal:
+    build: ./portal
+    ports:
+      - "3000:80"
+
+  streamlit:
+    build: ./streamlit
+    ports:
+      - "8501:8501"
+
+  gradio:
+    build: ./gradio
+    ports:
+      - "7860:7860"
+
+  htmx:
+    build: ./htmx
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+
+  htmx-fastapi:
+    build: ./htmx-fastapi
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+
+  react:
+    build: ./react
+    ports:
+      - "5173:80"
+
+  react-fastapi:
+    build: ./react-fastapi
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
