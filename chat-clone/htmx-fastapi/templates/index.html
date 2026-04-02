@@ -3,100 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude Chat Clone — HTMX + FastAPI</title>
+    <title>Claude Chat Clone — HTMX + FastAPI + Alpine + Tailwind</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sidebar: '#1a1a2e',
+                        chat: '#252538',
+                        accent: '#d4a574',
+                        bubble: '#2d2d44',
+                        border: '#3a3a52',
+                        muted: '#8080a0',
+                        subtle: '#606078',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .thinking-dot { animation: pulse 1.4s ease-in-out infinite; }
+        .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+        .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes pulse {
+            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-row { animation: fadeIn 0.25s ease-out; }
+        .scrollbar::-webkit-scrollbar { width: 6px; }
+        .scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar::-webkit-scrollbar-thumb { background: #3a3a52; border-radius: 3px; }
+        .scrollbar::-webkit-scrollbar-thumb:hover { background: #505068; }
+    </style>
 </head>
-<body>
-    <div id="app-container" class="app-container">
+<body class="h-screen w-screen overflow-hidden bg-chat text-gray-200 font-sans text-[15px] leading-relaxed"
+      x-data="chatApp()" @htmx:sse-message.window="scrollToBottom()" @htmx:after-swap.window="handleAfterSwap($event)">
+
+    <div id="app-container" class="flex h-full w-full relative">
         {% include 'partials/layout.html' %}
     </div>
 
     <script>
-        // Auto-scroll to bottom of messages
-        function scrollToBottom() {
-            const container = document.querySelector('.messages-container');
-            if (container) {
-                container.scrollTop = container.scrollHeight;
-            }
-        }
+        function chatApp() {
+            return {
+                sidebarOpen: false,
+                optionsOpen: false,
+                attachedFiles: [],
 
-        // Handle SSE messages for streaming
-        document.body.addEventListener('htmx:sseMessage', function(e) {
-            scrollToBottom();
-        });
+                scrollToBottom() {
+                    this.$nextTick(() => {
+                        const container = document.querySelector('.messages-container');
+                        if (container) container.scrollTop = container.scrollHeight;
+                    });
+                },
 
-        // Handle form submission
-        document.body.addEventListener('htmx:beforeRequest', function(e) {
-            if (e.detail.elt.id === 'chat-form') {
-                const filesInput = document.getElementById('files-input');
-                if (filesInput) {
-                    filesInput.value = Array.from(document.querySelectorAll('.file-pill-name'))
-                        .map(el => el.textContent).join(', ');
+                handleAfterSwap(e) {
+                    const prefill = document.getElementById('prefill-value');
+                    if (prefill) {
+                        document.getElementById('message-input').value = prefill.value;
+                        document.getElementById('message-input').focus();
+                        prefill.remove();
+                    }
+                    this.scrollToBottom();
+                },
+
+                handleFileSelect(input) {
+                    Array.from(input.files).forEach(file => {
+                        const size = file.size < 1024 ? file.size + ' B' :
+                            file.size < 1048576 ? (file.size / 1024).toFixed(1) + ' KB' :
+                            (file.size / 1048576).toFixed(1) + ' MB';
+                        this.attachedFiles.push({ name: file.name, size });
+                    });
+                    input.value = '';
+                },
+
+                removeFile(index) {
+                    this.attachedFiles.splice(index, 1);
+                },
+
+                getFilesString() {
+                    return this.attachedFiles.map(f => f.name).join(', ');
+                },
+
+                submitForm() {
+                    document.getElementById('files-input').value = this.getFilesString();
+                },
+
+                clearAfterSend() {
+                    document.getElementById('message-input').value = '';
+                    this.attachedFiles = [];
                 }
             }
+        }
+
+        document.body.addEventListener('htmx:beforeRequest', function(e) {
+            if (e.detail.elt.id === 'chat-form') {
+                Alpine.$data(document.body).submitForm();
+            }
         });
 
-        // Clear input after sending
         document.body.addEventListener('htmx:afterRequest', function(e) {
             if (e.detail.elt.id === 'chat-form') {
-                document.getElementById('message-input').value = '';
-                const filesList = document.getElementById('attached-files');
-                if (filesList) filesList.innerHTML = '';
+                Alpine.$data(document.body).clearAfterSend();
             }
         });
 
-        // Handle file selection
-        function handleFileSelect(input) {
-            const filesList = document.getElementById('attached-files');
-            if (!filesList) return;
-
-            const files = Array.from(input.files);
-            files.forEach(file => {
-                const size = file.size < 1024 ? file.size + ' B' :
-                    file.size < 1048576 ? (file.size / 1024).toFixed(1) + ' KB' :
-                    (file.size / 1048576).toFixed(1) + ' MB';
-                const pill = document.createElement('div');
-                pill.className = 'file-pill';
-                pill.innerHTML = `
-                    <span class="file-pill-icon">📄</span>
-                    <span class="file-pill-name">${file.name}</span>
-                    <span class="file-pill-size">${size}</span>
-                    <button type="button" class="file-pill-remove" onclick="this.parentElement.remove()">×</button>
-                `;
-                filesList.appendChild(pill);
-            });
-            input.value = '';
-        }
-
-        // Handle quick action prefill
-        document.body.addEventListener('htmx:afterSwap', function(e) {
-            const prefill = document.getElementById('prefill-value');
-            if (prefill) {
-                document.getElementById('message-input').value = prefill.value;
-                document.getElementById('message-input').focus();
-                prefill.remove();
-            }
-            scrollToBottom();
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => Alpine.$data(document.body)?.scrollToBottom(), 100);
         });
-
-        // Toggle options panel
-        function toggleOptions() {
-            const panel = document.getElementById('options-panel');
-            panel.classList.toggle('options-hidden');
-        }
-
-        // Toggle sidebar on mobile
-        function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.querySelector('.sidebar-overlay');
-            sidebar.classList.toggle('sidebar-open');
-            overlay.classList.toggle('overlay-visible');
-        }
-
-        // Initial scroll
-        document.addEventListener('DOMContentLoaded', scrollToBottom);
     </script>
 </body>
 </html>

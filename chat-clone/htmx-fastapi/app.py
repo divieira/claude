@@ -9,16 +9,10 @@ import uuid
 import markdown
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from itsdangerous import URLSafeSerializer
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
-
-# Session serializer (cookie-based state)
-serializer = URLSafeSerializer("chat-clone-secret-key-change-in-production")
 
 # ---------------------------------------------------------------------------
 # Constants
