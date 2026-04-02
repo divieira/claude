@@ -3,52 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude Chat Clone — HTMX + FastAPI + Alpine + Tailwind</title>
+    <title>Claude Chat Clone — HTMX + FastAPI + Modern CSS</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        sidebar: '#1a1a2e',
-                        chat: '#252538',
-                        accent: '#d4a574',
-                        bubble: '#2d2d44',
-                        border: '#3a3a52',
-                        muted: '#8080a0',
-                        subtle: '#606078',
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        [x-cloak] { display: none !important; }
-        .thinking-dot { animation: pulse 1.4s ease-in-out infinite; }
-        .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
-        .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes pulse {
-            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-            40% { opacity: 1; transform: scale(1); }
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .message-row { animation: fadeIn 0.25s ease-out; }
-        .scrollbar::-webkit-scrollbar { width: 6px; }
-        .scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar::-webkit-scrollbar-thumb { background: #3a3a52; border-radius: 3px; }
-        .scrollbar::-webkit-scrollbar-thumb:hover { background: #505068; }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="h-screen w-screen overflow-hidden bg-chat text-gray-200 font-sans text-[15px] leading-relaxed"
-      x-data="chatApp()" @htmx:sse-message.window="scrollToBottom()" @htmx:after-swap.window="handleAfterSwap($event)">
+<body x-data="chatApp()"
+      @htmx:sse-message.window="scrollToBottom()"
+      @htmx:after-swap.window="handleAfterSwap($event)">
 
-    <div id="app-container" class="flex h-full w-full relative">
+    <div id="app-container" class="app-container">
         {% include 'partials/layout.html' %}
     </div>
 
@@ -101,6 +66,18 @@
                 clearAfterSend() {
                     document.getElementById('message-input').value = '';
                     this.attachedFiles = [];
+                },
+
+                toggleSidebar() {
+                    this.sidebarOpen = !this.sidebarOpen;
+                    document.querySelector('.sidebar').classList.toggle('open', this.sidebarOpen);
+                    document.querySelector('.sidebar-overlay').classList.toggle('visible', this.sidebarOpen);
+                },
+
+                closeSidebar() {
+                    this.sidebarOpen = false;
+                    document.querySelector('.sidebar').classList.remove('open');
+                    document.querySelector('.sidebar-overlay').classList.remove('visible');
                 }
             }
         }

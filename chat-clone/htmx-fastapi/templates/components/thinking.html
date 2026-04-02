@@ -1,24 +1,24 @@
 {# Thinking trace component #}
 
 {% macro thinking_trace(trace) %}
-<details class="thinking-trace mb-2.5 rounded-xl overflow-hidden group">
-    <summary class="thinking-trace-toggle flex items-center gap-1.5 bg-accent/10 border border-accent/20 rounded-xl px-3 py-1.5 cursor-pointer text-muted text-sm list-none hover:bg-accent/15 hover:text-gray-400 group-open:rounded-b-none group-open:border-b-0">
-        <span class="thinking-trace-icon">💭</span>
-        <span class="thinking-trace-label flex-1 font-medium">Thinking...</span>
+<details class="thinking-trace">
+    <summary>
+        <span>💭</span>
+        <span class="label">Thinking...</span>
     </summary>
-    <div class="thinking-trace-content bg-accent/5 border border-accent/20 border-t-0 rounded-b-xl p-3">
-        <div class="thinking-trace-section mb-2.5">
-            <div class="thinking-trace-section-title text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Reasoning</div>
-            <p class="thinking-trace-reasoning text-xs text-gray-400 italic leading-relaxed">{{ trace.reasoning }}</p>
+    <div class="content">
+        <div class="section">
+            <div class="section-title">Reasoning</div>
+            <p class="reasoning">{{ trace.reasoning }}</p>
         </div>
         {% if trace.tools %}
-        <div class="thinking-trace-section">
-            <div class="thinking-trace-section-title text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Tool Use</div>
+        <div class="section">
+            <div class="section-title">Tool Use</div>
             {% for tool in trace.tools %}
-            <div class="thinking-trace-tool flex items-center gap-1.5 px-2 py-1 bg-sidebar/50 rounded-md mb-1 text-xs last:mb-0">
-                <span class="tool-call-icon text-[11px]">⚡</span>
-                <span class="tool-call-name text-accent font-mono font-medium">{{ tool.name }}</span>
-                <span class="tool-call-query text-subtle font-mono">("{{ tool.query }}")</span>
+            <div class="tool">
+                <span class="icon">⚡</span>
+                <span class="name">{{ tool.name }}</span>
+                <span class="query">("{{ tool.query }}")</span>
             </div>
             {% endfor %}
         </div>

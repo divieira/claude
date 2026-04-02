@@ -1,39 +1,37 @@
 {# Message component macros #}
 
 {% macro user_message(msg) %}
-<div class="message-row message-row-user flex items-start gap-3 mb-5 justify-end">
-    <div class="message-bubble bubble-user max-w-[75%] px-4 py-3 rounded-2xl rounded-br-md shadow bg-accent text-sidebar">
-        <div class="message-text break-words">{{ msg.content | replace('\n', '<br>') | safe }}</div>
+<div class="message-row user">
+    <div class="message-bubble user">
+        <div class="message-text">{{ msg.content | replace('\n', '<br>') | safe }}</div>
     </div>
-    <div class="avatar avatar-user w-8 h-8 min-w-[32px] rounded-full flex items-center justify-center text-sm font-bold mt-0.5 bg-accent text-sidebar">U</div>
+    <div class="avatar user">U</div>
 </div>
 {% endmacro %}
 
 {% macro assistant_message(msg, content_html, thinking_html='') %}
-<div id="msg-{{ msg.id }}" class="message-row message-row-assistant flex items-start gap-3 mb-5 justify-start" {% if msg.oob %}hx-swap-oob="true"{% endif %}>
-    <div class="avatar avatar-assistant w-8 h-8 min-w-[32px] rounded-full flex items-center justify-center text-sm font-bold mt-0.5 bg-border text-accent">C</div>
-    <div class="message-bubble bubble-assistant max-w-[75%] px-4 py-3 rounded-2xl rounded-bl-md shadow bg-bubble text-gray-200">
+<div id="msg-{{ msg.id }}" class="message-row assistant" {% if msg.oob %}hx-swap-oob="true"{% endif %}>
+    <div class="avatar assistant">C</div>
+    <div class="message-bubble assistant">
         {{ thinking_html | safe }}
-        <div class="message-text markdown-body break-words prose prose-invert prose-sm max-w-none prose-headings:text-accent prose-strong:text-amber-200 prose-code:text-accent prose-code:bg-sidebar prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-sidebar prose-pre:border prose-pre:border-border prose-blockquote:border-l-accent prose-blockquote:bg-accent/5">
-            {{ content_html | safe }}
-        </div>
+        <div class="message-text markdown-body">{{ content_html | safe }}</div>
     </div>
 </div>
 {% endmacro %}
 
 {% macro thinking_indicator() %}
-<div id="thinking" class="message-row message-row-assistant flex items-start gap-3 mb-5 justify-start">
-    <div class="avatar avatar-assistant w-8 h-8 min-w-[32px] rounded-full flex items-center justify-center text-sm font-bold mt-0.5 bg-border text-accent">C</div>
-    <div class="message-bubble bubble-assistant max-w-[75%] px-4 py-3 rounded-2xl rounded-bl-md shadow bg-bubble text-gray-200">
-        <div class="thinking-indicator flex items-center gap-1.5">
-            <div class="thinking-dot w-2 h-2 bg-accent rounded-full"></div>
-            <div class="thinking-dot w-2 h-2 bg-accent rounded-full"></div>
-            <div class="thinking-dot w-2 h-2 bg-accent rounded-full"></div>
+<div id="thinking" class="message-row assistant">
+    <div class="avatar assistant">C</div>
+    <div class="message-bubble assistant">
+        <div class="thinking-indicator">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
         </div>
     </div>
 </div>
 {% endmacro %}
 
 {% macro hide_thinking() %}
-<div id="thinking" hx-swap-oob="true" style="display:none;"></div>
+<div id="thinking" hx-swap-oob="true" class="hidden"></div>
 {% endmacro %}
