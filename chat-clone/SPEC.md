@@ -52,4 +52,5 @@ The assistant picks a response by hashing the user message or cycling through th
 | `streamlit/` | Streamlit | `pip install -r requirements.txt && streamlit run app.py` |
 | `gradio/` | Gradio | `pip install -r requirements.txt && python app.py` |
 | `htmx/` | Flask + HTMX | `pip install -r requirements.txt && python app.py` |
-| `htmx-fastapi/` | FastAPI + HTMX | `pip install -r requirements.txt && uvicorn app:app --port 5001` |
+| `htmx-fastapi/` | FastAPI + HTMX + Alpine + Tailwind | `pip install -r requirements.txt && uvicorn app:app --port 5001` |
+| `react-fastapi/` | React + FastAPI | See README (run backend + frontend separately) |
