@@ -51,7 +51,7 @@ QUICK_ACTIONS = [
     ("📊 Analyze", "Analyze the following data:"),
 ]
 
-# In-memory session store (in production, use Redis or similar)
+# In-memory session store
 sessions: dict[str, dict] = {}
 
 
@@ -60,7 +60,6 @@ def get_session(request: Request) -> dict:
     session_id = request.cookies.get("session_id")
     if session_id and session_id in sessions:
         return sessions[session_id]
-    # Create new session
     session_id = str(uuid.uuid4())
     sessions[session_id] = {
         "id": session_id,
@@ -92,54 +91,10 @@ def render_markdown(text: str) -> str:
     return markdown.markdown(text, extensions=["fenced_code", "tables", "nl2br"])
 
 
-def render_thinking_trace_html(trace: dict) -> str:
-    """Render thinking trace as collapsible HTML."""
-    tools_html = ""
-    if trace.get("tools"):
-        tools_html = '<div class="thinking-trace-section"><div class="thinking-trace-section-title">Tool Use</div>'
-        for tool in trace["tools"]:
-            tools_html += f'''<div class="thinking-trace-tool">
-                <span class="tool-call-icon">⚡</span>
-                <span class="tool-call-name">{tool["name"]}</span>
-                <span class="tool-call-query">("{tool["query"]}")</span>
-            </div>'''
-        tools_html += "</div>"
-
-    return f'''<details class="thinking-trace">
-        <summary class="thinking-trace-toggle">
-            <span class="thinking-trace-icon">💭</span>
-            <span class="thinking-trace-label">Thinking...</span>
-        </summary>
-        <div class="thinking-trace-content">
-            <div class="thinking-trace-section">
-                <div class="thinking-trace-section-title">Reasoning</div>
-                <p class="thinking-trace-reasoning">{trace["reasoning"]}</p>
-            </div>
-            {tools_html}
-        </div>
-    </details>'''
-
-
-def render_message_html(msg: dict) -> str:
-    """Render a single message as HTML."""
-    if msg["role"] == "user":
-        content = msg["content"].replace("\n", "<br>")
-        return f'''<div class="message-row message-row-user">
-            <div class="message-bubble bubble-user">
-                <div class="message-text">{content}</div>
-            </div>
-            <div class="avatar avatar-user">U</div>
-        </div>'''
-    else:
-        trace_html = render_thinking_trace_html(msg["thinking"]) if msg.get("thinking") else ""
-        content_html = render_markdown(msg["content"])
-        return f'''<div class="message-row message-row-assistant">
-            <div class="avatar avatar-assistant">C</div>
-            <div class="message-bubble bubble-assistant">
-                {trace_html}
-                <div class="message-text markdown-body">{content_html}</div>
-            </div>
-        </div>'''
+def render_component(name: str, **kwargs) -> str:
+    """Render a component template and return HTML string."""
+    template = templates.get_template(f"components/{name}.html")
+    return template.module
 
 
 # ---------------------------------------------------------------------------
@@ -176,58 +131,58 @@ async def send_message(request: Request, message: str = Form(""), files: str = F
     session = get_session(request)
     conv = get_active_conversation(session)
 
-    # Build user message with file prefix
+    # Build user message
     file_prefix = f"📎 {files}\n\n" if files else ""
     user_content = file_prefix + message
 
-    # Update title if first message
     if not conv["messages"]:
         conv["title"] = message[:40] + ("..." if len(message) > 40 else "")
 
-    # Add user message
     user_msg = {"id": str(uuid.uuid4()), "role": "user", "content": user_content}
     conv["messages"].append(user_msg)
 
-    # Get response and trace
     response_text, trace = pick_response(message)
 
+    # Get component templates
+    msg_tpl = templates.get_template("components/message.html")
+    thinking_tpl = templates.get_template("components/thinking.html")
+
     async def generate():
-        # Send user message HTML first
-        user_html = render_message_html(user_msg)
+        # User message
+        user_html = msg_tpl.module.user_message(user_msg)
         yield f"data: {user_html}\n\n"
 
-        # Send thinking indicator
-        yield 'data: <div id="thinking" class="message-row message-row-assistant"><div class="avatar avatar-assistant">C</div><div class="message-bubble bubble-assistant"><div class="thinking-indicator"><div class="thinking-dot"></div><div class="thinking-dot"></div><div class="thinking-dot"></div></div></div></div>\n\n'
+        # Thinking indicator
+        thinking_html = msg_tpl.module.thinking_indicator()
+        yield f"data: {thinking_html}\n\n"
 
-        await asyncio.sleep(0.8)  # Thinking delay
+        await asyncio.sleep(0.8)
 
-        # Build thinking trace HTML
-        trace_html = render_thinking_trace_html(trace)
+        # Render thinking trace once
+        trace_html = thinking_tpl.module.thinking_trace(trace)
 
-        # Stream the response character by character
+        # Stream response
         partial = ""
         msg_id = str(uuid.uuid4())
         for i, char in enumerate(response_text):
             partial += char
             content_html = render_markdown(partial)
-            msg_html = f'''<div id="msg-{msg_id}" class="message-row message-row-assistant" hx-swap-oob="true">
-                <div class="avatar avatar-assistant">C</div>
-                <div class="message-bubble bubble-assistant">
-                    {trace_html}
-                    <div class="message-text markdown-body">{content_html}</div>
-                </div>
-            </div>'''
-            # Replace thinking indicator on first char
+
+            msg = {"id": msg_id, "oob": True}
+            assistant_html = msg_tpl.module.assistant_message(msg, content_html, trace_html)
+
             if i == 0:
-                msg_html = '<div id="thinking" hx-swap-oob="true" style="display:none;"></div>' + msg_html
-            yield f"data: {msg_html}\n\n"
+                hide_html = msg_tpl.module.hide_thinking()
+                yield f"data: {hide_html}{assistant_html}\n\n"
+            else:
+                yield f"data: {assistant_html}\n\n"
+
             await asyncio.sleep(0.02)
 
-        # Save assistant message to session
+        # Save to session
         assistant_msg = {"id": msg_id, "role": "assistant", "content": response_text, "thinking": trace}
         conv["messages"].append(assistant_msg)
 
-        # Signal end of stream
         yield 'data: <div id="stream-end"></div>\n\n'
 
     return StreamingResponse(generate(), media_type="text/event-stream")
@@ -283,7 +238,9 @@ async def update_options(request: Request):
     session = get_session(request)
     session["selected_model"] = form.get("model", "Claude Sonnet 4")
     session["enabled_tools"] = form.getlist("tools")
-    return HTMLResponse(f'<span id="model-badge" class="model-badge">{session["selected_model"]}</span>')
+
+    tpl = templates.get_template("components/options.html")
+    return HTMLResponse(tpl.module.model_badge(session["selected_model"]))
 
 
 @app.post("/quick-action", response_class=HTMLResponse)
@@ -291,12 +248,11 @@ async def quick_action(request: Request):
     """Return prefill text for quick action."""
     form = await request.form()
     text = form.get("text", "")
-    return HTMLResponse(f'<input type="hidden" id="prefill-value" value="{text} " />')
+
+    tpl = templates.get_template("components/options.html")
+    return HTMLResponse(tpl.module.prefill_input(text))
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=5001)

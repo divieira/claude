@@ -1,3 +1,6 @@
+{% from "components/message.html" import user_message, assistant_message %}
+{% from "components/thinking.html" import thinking_trace %}
+
 <!-- Sidebar overlay for mobile -->
 <div class="fixed inset-0 bg-black/50 z-40 md:hidden"
      x-show="sidebarOpen" x-cloak
@@ -74,45 +77,10 @@
              hx-swap="beforeend">
             {% for msg in active_conversation.messages %}
                 {% if msg.role == 'user' %}
-                <div class="message-row flex items-start gap-3 mb-5 justify-end">
-                    <div class="max-w-[75%] px-4 py-3 rounded-2xl rounded-br-md shadow bg-accent text-sidebar">
-                        <div class="break-words">{{ msg.content | replace('\n', '<br>') | safe }}</div>
-                    </div>
-                    <div class="w-8 h-8 min-w-[32px] rounded-full flex items-center justify-center text-sm font-bold mt-0.5 bg-accent text-sidebar">U</div>
-                </div>
+                    {{ user_message(msg) }}
                 {% else %}
-                <div class="message-row flex items-start gap-3 mb-5 justify-start">
-                    <div class="w-8 h-8 min-w-[32px] rounded-full flex items-center justify-center text-sm font-bold mt-0.5 bg-border text-accent">C</div>
-                    <div class="max-w-[75%] px-4 py-3 rounded-2xl rounded-bl-md shadow bg-bubble text-gray-200">
-                        {% if msg.thinking %}
-                        <details class="mb-2.5 rounded-xl overflow-hidden group">
-                            <summary class="flex items-center gap-1.5 bg-accent/10 border border-accent/20 rounded-xl px-3 py-1.5 cursor-pointer text-muted text-sm list-none hover:bg-accent/15 hover:text-gray-400 group-open:rounded-b-none group-open:border-b-0">
-                                <span>💭</span>
-                                <span class="flex-1 font-medium">Thinking...</span>
-                            </summary>
-                            <div class="bg-accent/5 border border-accent/20 border-t-0 rounded-b-xl p-3">
-                                <div class="mb-2.5">
-                                    <div class="text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Reasoning</div>
-                                    <p class="text-xs text-gray-400 italic leading-relaxed">{{ msg.thinking.reasoning }}</p>
-                                </div>
-                                {% if msg.thinking.tools %}
-                                <div>
-                                    <div class="text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Tool Use</div>
-                                    {% for tool in msg.thinking.tools %}
-                                    <div class="flex items-center gap-1.5 px-2 py-1 bg-sidebar/50 rounded-md mb-1 text-xs last:mb-0">
-                                        <span class="text-[11px]">⚡</span>
-                                        <span class="text-accent font-mono font-medium">{{ tool.name }}</span>
-                                        <span class="text-subtle font-mono">("{{ tool.query }}")</span>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                            </div>
-                        </details>
-                        {% endif %}
-                        <div class="break-words prose prose-invert prose-sm max-w-none prose-headings:text-accent prose-strong:text-amber-200 prose-code:text-accent prose-code:bg-sidebar prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-sidebar prose-pre:border prose-pre:border-border prose-blockquote:border-l-accent prose-blockquote:bg-accent/5">{{ render_markdown(msg.content) | safe }}</div>
-                    </div>
-                </div>
+                    {% set thinking_html = thinking_trace(msg.thinking) if msg.thinking else '' %}
+                    {{ assistant_message(msg, render_markdown(msg.content), thinking_html) }}
                 {% endif %}
             {% endfor %}
         </div>
