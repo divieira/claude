@@ -209,7 +209,7 @@
         <div class="key-hint">
           Required for map, routing, and address search. Enable
           <strong style="color:var(--text)">Maps JavaScript API</strong>,
-          <strong style="color:var(--text)">Directions API</strong>, and
+          <strong style="color:var(--text)">Routes API</strong>, and
           <strong style="color:var(--text)">Places API</strong> in
           <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank">Google Cloud Console</a>.
           Stored in your browser only. Reload after changing the key.
@@ -242,7 +242,6 @@ const state = {
   startMarkers: new Map(),
   endMarker: null,
   map: null,
-  dirSvc: null,
 };
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -275,7 +274,7 @@ function loadMaps(key) {
     if (window.google?.maps?.Map) { resolve(); return; }
     window.__gmCb = resolve;
     const s = document.createElement('script');
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places&callback=__gmCb`;
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places,marker,geometry&loading=async&callback=__gmCb`;
     s.async = true;
     s.onerror = () => { mapsPromise = null; reject(new Error('Failed to load Google Maps')); };
     document.head.appendChild(s);
@@ -290,8 +289,8 @@ async function initMap() {
   state.map = new google.maps.Map(document.getElementById('map'), {
     zoom: 11, center: { lat: 51.505, lng: -0.09 },
     mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+    mapId: 'DEMO_MAP_ID',
   });
-  state.dirSvc = new google.maps.DirectionsService();
 
   document.getElementById('map-placeholder').classList.add('hidden');
 
@@ -348,7 +347,7 @@ function clearEndpoint() {
   const inp = document.getElementById('ep-input');
   inp.style.display = ''; inp.value = '';
   if (state.map) bindAc(inp, coord => { state.endpoint = coord; showEndpointChip(coord); placeEndMarker(coord); saveState(); updateCalcBtn(); });
-  if (state.endMarker) { state.endMarker.setMap(null); state.endMarker = null; }
+  if (state.endMarker) { state.endMarker.map = null; state.endMarker = null; }
   clearAll(); saveState(); updateCalcBtn();
 }
 
@@ -413,34 +412,35 @@ function updateAddBtn() {
 }
 
 // ── Markers ───────────────────────────────────────────────────────────────────
-function markerIcon(color, scale) {
-  return { path: google.maps.SymbolPath.CIRCLE, scale, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 };
+function makeMarkerContent(color, size) {
+  const el = document.createElement('div');
+  el.style.cssText = `width:${size}px;height:${size}px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4);`;
+  return el;
 }
 
 function placeEndMarker(coord) {
-  if (state.endMarker) state.endMarker.setMap(null);
-  state.endMarker = new google.maps.Marker({ position: coord, map: state.map, title: coord.label, icon: markerIcon('#d4a574', 9), zIndex: 10 });
+  if (state.endMarker) state.endMarker.map = null;
+  state.endMarker = new google.maps.marker.AdvancedMarkerElement({ position: coord, map: state.map, title: coord.label, content: makeMarkerContent('#d4a574', 18), zIndex: 10 });
 }
 
 function placeStartMarker(id, coord, color) {
   removeStartMarker(id);
-  state.startMarkers.set(id, new google.maps.Marker({ position: coord, map: state.map, title: coord.label, icon: markerIcon(color, 7), zIndex: 5 }));
+  state.startMarkers.set(id, new google.maps.marker.AdvancedMarkerElement({ position: coord, map: state.map, title: coord.label, content: makeMarkerContent(color, 14), zIndex: 5 }));
 }
 
 function removeStartMarker(id) {
-  state.startMarkers.get(id)?.setMap(null);
+  const m = state.startMarkers.get(id);
+  if (m) m.map = null;
   state.startMarkers.delete(id);
 }
 
 // ── Renderers ─────────────────────────────────────────────────────────────────
-function showRoute(id, result, color) {
+function showRoute(id, route, color) {
   clearRenderer(id);
-  const r = new google.maps.DirectionsRenderer({
-    directions: result, map: state.map, suppressMarkers: true,
-    polylineOptions: { strokeColor: color, strokeWeight: 4, strokeOpacity: 0.85 },
-  });
-  state.renderers.set(id, r);
-  return r;
+  const path = google.maps.geometry.encoding.decodePath(route.polyline.encodedPolyline);
+  const polyline = new google.maps.Polyline({ path, map: state.map, strokeColor: color, strokeWeight: 4, strokeOpacity: 0.85 });
+  state.renderers.set(id, polyline);
+  return path;
 }
 
 function clearRenderer(id) {
@@ -455,15 +455,35 @@ function clearAll() {
 }
 
 // ── Routing ───────────────────────────────────────────────────────────────────
-const TRAVEL_MODE = { drive: 'DRIVING', bike: 'BICYCLING', transit: 'TRANSIT' };
+const TRAVEL_MODE = { drive: 'DRIVE', bike: 'BICYCLE', transit: 'TRANSIT' };
 
-function fetchRoute(start, end, mode) {
-  return new Promise((resolve, reject) => {
-    state.dirSvc.route(
-      { origin: start, destination: end, travelMode: TRAVEL_MODE[mode] },
-      (result, status) => status === 'OK' ? resolve(result) : reject(new Error(status))
-    );
+async function fetchRoute(start, end, mode) {
+  const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': state.gmapsKey,
+      'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline',
+    },
+    body: JSON.stringify({
+      origin:      { location: { latLng: { latitude: start.lat, longitude: start.lng } } },
+      destination: { location: { latLng: { latitude: end.lat,   longitude: end.lng   } } },
+      travelMode:  TRAVEL_MODE[mode],
+    }),
   });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || 'Routes API error');
+  if (!data.routes?.length) throw new Error('No routes found');
+  return data.routes[0];
+}
+
+function formatDuration(secs) {
+  const h = Math.floor(secs / 3600), m = Math.ceil((secs % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m} min`;
+}
+
+function formatDistance(meters) {
+  return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${meters} m`;
 }
 
 function gmapsUrl(start, end, mode) {
@@ -487,7 +507,7 @@ function renderCard(sp, data, error) {
   card.innerHTML = body + '</div>';
 
   if (!error && state.renderers.has(sp.id)) {
-    const opts = w => ({ polylineOptions: { strokeColor: sp.color, strokeWeight: w, strokeOpacity: w > 4 ? 1 : 0.85 } });
+    const opts = w => ({ strokeWeight: w, strokeOpacity: w > 4 ? 1 : 0.85 });
     card.addEventListener('mouseenter', () => state.renderers.get(sp.id)?.setOptions(opts(7)));
     card.addEventListener('mouseleave', () => state.renderers.get(sp.id)?.setOptions(opts(4)));
   }
@@ -519,10 +539,9 @@ async function calculate() {
 
   results.forEach(({ sp, r, error }) => {
     if (error) { renderCard(sp, null, error); return; }
-    showRoute(sp.id, r, sp.color);
-    const leg = r.routes[0].legs[0];
-    renderCard(sp, { dist: leg.distance.text, dur: leg.duration.text, url: gmapsUrl(sp, state.endpoint, state.mode) }, null);
-    r.routes[0].overview_path.forEach(p => bounds.extend(p));
+    const path = showRoute(sp.id, r, sp.color);
+    renderCard(sp, { dist: formatDistance(r.distanceMeters), dur: formatDuration(parseInt(r.duration)), url: gmapsUrl(sp, state.endpoint, state.mode) }, null);
+    path.forEach(p => bounds.extend(p));
     hasRoute = true;
   });
 
